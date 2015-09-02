@@ -1,0 +1,114 @@
+#    Ragnarok - An OSX Development Platform
+#    Copyright (C) 2015  OpSitters.com
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License along
+#    with this program; if not, write to the Free Software Foundation, Inc.,
+#    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+function ragnarok() {
+  $RAGNAROK_DIR/ragnarok
+}
+
+function ragnarok-docker-check() {
+  $(gtimeout 2 docker info >/dev/null 2>&1)
+  return $?
+}
+
+function ragnarok-docker-wipe() {
+  log_info "Purging Containers"
+  docker-compose kill
+  docker-compose rm -f
+  docker rm -f $(docker ps -aq)
+  log_line
+}
+
+function ragnarok-enter() {
+  boot2docker ssh '[ -f /var/lib/boot2docker/nsenter ] || docker run --rm -v /var/lib/boot2docker/:/target jpetazzo/nsenter'
+  CID=$(docker ps -a | grep "$@" | grep Up | cut -f1 -d" ")
+  if [ -z "$CID" ]; then
+    log_error "Could not find running container matching $@"
+    false
+  else
+    boot2docker ssh -t sudo /var/lib/boot2docker/docker-enter "$CID"
+    return $?
+  fi
+}
+
+function ragnarok-delete() {
+  log_line
+  log_info "Resetting Apocalypse"
+  log_info "Purging Containers"
+  if [ $(VBoxManage list vms | grep -ci "${RAGNAROK_VM}") -eq 1 ]; then
+    docker-compose kill
+    docker-compose rm -f
+  else
+    log_info "Containers are toast already!"
+  fi
+  log_info "Killing Docker VM"
+  boot2docker destroy 2>/dev/null
+  log_info "Docker VM toasted!"
+  VBNET=$(VBoxManage list hostonlyifs | grep ${RAGNAROK_HOST_IP} -B3 | grep vbox | tr -d ' ' | cut -f2 -d':')
+  if [ -n "$VBNET" ]; then
+    log_info "Killing Left Over Networking"
+    VBoxManage dhcpserver remove --netname HostInterfaceNetworking-$VBNET
+    VBoxManage hostonlyif remove $VBNET
+  fi
+  log_info "Apocalypse has been reset"
+  log_line
+}
+
+function ragnarok-purge-docker() {
+  docker rm -f -v $(docker ps -a -q)
+  docker rmi $(docker images -q)
+}
+
+function ragnarok-shell() {
+  docker-compose run --rm shell /bin/bash
+}
+
+function ragnarok-sync {
+  if [ $(screen -ls | grep -ci RAGNAROK_SYNC) -ne 1 ]; then
+    docker-compose up -d unison
+    sleep 10
+    screen -S RAGNAROK_SYNC -d -m unison -ignore 'Name {.git,*.swp,*.pyc,*.pid}' -ignore 'Path {platform/dashboard/tmp,platform/dashboard/log}' -batch -confirmbigdel=false -ui text -sshargs '-i ~/.ssh/id_boot2docker' ~/ragnarok/shared/ socket://${RAGNAROK_VM_IP}:50000/ -prefer ~/ragnarok/shared/ -numericids -ignorearchives && unison -ignore 'Name {.git,*.swp,*.pyc,*.pid}' -ignore 'Path {platform/dashboard/tmp,platform/dashboard/log}' -batch -confirmbigdel=false -ui text -sshargs '-i ~/.ssh/id_boot2docker' ~/ragnarok/shared/ socket://${RAGNAROK_VM_IP}:50000/ -repeat watch -prefer ~/ragnarok/shared/ -numericids
+  fi
+}
+
+function ragnarok-build() {
+  ragnarok-compose
+  docker-compose pull
+  docker-compose build
+  return $?
+}
+
+function ragnarok-compose() {
+  cat $RAGNAROK_DIR/compose.yml > $RAGNAROK_DIR/docker-compose.yml
+  for app in $(ls -d $RAGNAROK_APP_DIR/*); do
+    if [ -f $app/compose.yml ]; then
+      echo "" >> $RAGNAROK_DIR/docker-compose.yml
+      cat $app/compose.yml >> $RAGNAROK_DIR/docker-compose.yml
+    fi
+  done
+  return $?
+}
+
+function ragnarok-init-db-users() {
+  postgres-create-ro pgread
+  postgres-create-rw pgwrite
+}
+
+function ragnarok-init() {
+  $RAGNAROK_DIR/ragnarok
+  ragnarok-build
+  return $?
+}

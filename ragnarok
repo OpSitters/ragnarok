@@ -1,0 +1,200 @@
+#!/bin/bash
+
+#    Ragnarok - An OSX Development Platform
+#    Copyright (C) 2015  OpSitters.com
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License along
+#    with this program; if not, write to the Free Software Foundation, Inc.,
+#    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+
+if [ -n "$BASH_VERSION" ]; then
+  RAGNAROK_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+else
+  log_line
+  echo "Sorry, This script must be run in a BASH shell"
+  log_line
+  exit 1
+fi
+
+# These really should be imported by your user profile, but lets be sure!
+source $RAGNAROK_DIR/.profile
+
+if ! type brew > /dev/null 2>&1 ; then
+  log_info "Installing Brew"
+  ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+fi
+
+if [ -z "$BREW_PREFIX" ]; then
+  BREW_PREFIX=$(brew config | grep HOMEBREW_PREFIX | awk '{print $2}')
+fi
+
+if ! type $BREW_PREFIX/bin/python > /dev/null 2>&1 ; then
+  log_info "Install brew-python"
+  brew install python
+fi
+
+if ! type boot2docker > /dev/null 2>&1 ; then
+  log_info "Installing Boot2Docker"
+  brew install boot2docker
+fi
+
+if ! type docker-compose > /dev/null 2>&1 ; then
+  log_info "Installing docker-compose"
+  brew install docker-compose
+fi
+
+if ! type unison > /dev/null 2>&1 ; then
+  log_info "Installing unison"
+  brew install unison
+fi
+
+if ! type fswatch > /dev/null 2>&1 ; then
+  log_info "Installing fswatch"
+  brew install fswatch
+fi
+
+if ! type greadlink > /dev/null 2>&1 ; then
+  log_info "Installing coreutils"
+  brew install coreutils
+fi
+
+if ! type unison-fsmonitor > /dev/null 2>&1 ; then
+  log_info "Installing unison-fsmonitor"
+  curl -s -o /usr/local/bin/docker-osx-dev https://raw.githubusercontent.com/jumpstarter-io/unox/master/unox.py -o /usr/local/bin/unison-fsmonitor
+  chmod a+x /usr/local/bin/unison-fsmonitor
+fi
+
+if [ -n "$(pip | grep MacFSEvents)" ]; then
+  log_info "Installing Python MacFSEvents Library"
+  pip install MacFSEvents
+fi
+
+if [ $(VBoxManage list vms | grep -ci "${RAGNAROK_VM}") -ne 1 ]; then
+  log_line
+  log_info "Ragnarok Not Found, initializing a new cosmos (might take a bit, cosmos are complicated)."
+  mkdir -p ${HOME}/.boot2docker/
+  boot2docker config \
+    --dhcp=true \
+    --vbox-share=disable \
+    --hostip=${RAGNAROK_HOST_IP} \
+    --dhcpip=${RAGNAROK_HOST_IP} \
+    --lowerip=${RAGNAROK_VM_IP} \
+    --upperip=${RAGNAROK_VM_IP} \
+    --memory=${RAGNAROK_VM_RAM} \
+    --netmask=${RAGNAROK_VM_MASK} \
+    --disksize=${RAGNAROK_VM_DISK} \
+    --vm="${RAGNAROK_VM}" \
+  > ${RAGNAROK_CONF}
+  boot2docker init
+  COSMOS=$?
+  if [ $COSMOS -eq 0 ]; then
+    log_info "Cosmos created with Great Success. lets Ragnarok!"
+    log_line
+  else
+    log_error "ERROR creating the cosmos, errors should have be above..."
+    log_line
+    ragnarok-purge
+    exit 1
+  fi
+
+  mkdir -p $RAGNAROK_SHARED
+  mkdir -p $RAGNAROK_SYNC
+  VBoxManage sharedfolder add ${RAGNAROK_VM} --name /shared --hostpath $RAGNAROK_SHARED --automount
+  VBoxManage sharedfolder add ${RAGNAROK_VM} --name /sync --hostpath $RAGNAROK_SYNC --automount
+  VBoxManage modifyvm ${RAGNAROK_VM} --natdnshostresolver1 on --natdnshostresolver2 on
+  if [ $(boot2docker start | grep -ci "Started.") -eq 1 ]; then
+    boot2docker ssh "cat <<EOT > /tmp/bootlocal.sh
+#!/bin/sh
+mkdir -p /shared
+mkdir -p /sync
+#mount -t vboxsf -o uid='1000',gid='50' /shared /shared
+#mount -t vboxsf -o uid='1000',gid='50' /sync /sync
+mkdir -p ${UNISON_VM_DIR}/
+ln -sf ${UNISON_VM_DIR} /
+chown docker:docker /shared
+chown docker:docker /sync
+chown -R docker:docker ${UNISON_VM_DIR}
+chown -h docker:docker /unison
+EOT
+"
+    boot2docker ssh 'cat <<EOT > /tmp/profile
+wait4eth1() {
+  CNT=0
+  until ip a show eth1 | grep -q UP
+  do
+    [ $((CNT++)) -gt 60 ] && break || sleep 1
+  done
+  sleep 1
+}
+wait4eth1
+EOT
+'
+    boot2docker ssh "
+      sudo mv /tmp/bootlocal.sh ${BOOT2DOCKER_LOCAL};
+      sudo chmod 755 ${BOOT2DOCKER_LOCAL};
+      sudo ${BOOT2DOCKER_LOCAL}
+      sudo mv /tmp/profile ${BOOT2DOCKER_VM_PROFILE};
+      sudo chmod 755 ${BOOT2DOCKER_VM_PROFILE};
+      sudo ${BOOT2DOCKER_VM_PROFILE}
+  "
+  else
+    log_error "Error starting Ragnarok, please summon Hell-Boy"
+    log_line
+    exit 1
+  fi
+fi
+
+if [ $(VBoxManage list runningvms | grep -ci "${RAGNAROK_VM}") -ne 1 ]; then
+  log_line
+  log_info "Ragnarok Not Running, starting now."
+  if [ $(boot2docker start | grep -ci "Started.") -eq 1 ]; then
+    log_info "Great Success! Now Waiting for docker to start"
+  else
+    log_error "Error starting Ragnarok, please summon Hell-Boy"
+    log_line
+    exit 1
+  fi
+fi
+
+$(boot2docker shellinit >/dev/null 2>&1)
+
+i=0
+while ! ragnarok-docker-check; do
+  i=`expr $i + 1`
+  if [ $i -ge 40 ]; then
+      log_error "Can not contact Docker; Pandas are sad everywhere."
+      docker info
+      exit 1
+  fi
+  sleep .25
+  echo -n "."
+done
+if [ $i -gt 0 ]; then
+  echo ''
+fi
+
+ragnarok-compose
+
+if test -z "$(docker images -q ragnarok/unison)"; then
+  log_error "Unison Image not found, Building on ${DOCKER_HOST}..."
+  docker build -t ragnarok/unison git@github.com:popsikle/docker-unison.git
+  if test -z "$(docker images -q ragnarok/unison)"; then
+    log_line
+    log_error "Unison Image build failed, please summon Hell-Boy"
+    log_line
+  fi
+fi
+
+log_info "Ragnarok Ready ..."
+log_line

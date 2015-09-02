@@ -1,0 +1,13 @@
+# private stuff (local)
+/private
+/shared
+/apps/*
+!apps/demo/
+
+*.exe
+*.orig
+*.test
+.*.swp
+.DS_Store
+.unison
+docker-compose.yml

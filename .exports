@@ -1,0 +1,42 @@
+if [ -z "$LOG_LEVEL_INFO" ]; then
+  readonly COLOR_INFO='\033[0;32m'
+  readonly COLOR_ERROR='\033[0;31m'
+  readonly COLOR_END='\033[0m'
+  readonly LOG_LEVEL_INFO="INFO"
+  readonly LOG_LEVEL_ERROR="ERROR"
+fi
+
+export RAGNAROK_CONF=${HOME}/.boot2docker/profile
+export RAGNAROK_CERT_DIR=${HOME}/.boot2docker/certs
+export RAGNAROK_APP_DIR=${RAGNAROK_DIR}/apps
+export RAGNAROK_SHARED=${RAGNAROK_DIR}/shared
+export RAGNAROK_SYNC=${RAGNAROK_DIR}/sync
+export RAGNAROK_HOST_IP=172.17.11.1
+
+export RAGNAROK_VM=ragnarok
+export RAGNAROK_VM_RAM=8192
+export RAGNAROK_VM_IP=172.17.11.51
+export RAGNAROK_VM_MASK='255.255.255.0'
+export RAGNAROK_VM_DISK=41920
+
+export RAGNAROK=true
+
+export BOOT2DOCKER_LOCAL='/mnt/sda1/var/lib/boot2docker/bootlocal.sh'
+export BOOT2DOCKER_PROFILE=$RAGNAROK_CONF
+export BOOT2DOCKER_VM_PROFILE='/mnt/sda1/var/lib/boot2docker/profile'
+
+export DOCKER_HOST=tcp://$RAGNAROK_VM_IP:2376
+export DOCKER_CERT_PATH=$RAGNAROK_CERT_DIR/ragnarok
+export DOCKER_TLS_VERIFY=true
+
+export UNISON=${RAGNAROK_DIR}/.unison
+export UNISON_VM_DIR='/mnt/sda1/unison'
+export UNISONLOCALHOSTNAME=${RAGNAROK_VM}
+export DOCKER_HOST_NAME=$RAGNAROK_HOST_IP
+
+export COMPOSE_PROJECT_NAME=ragnarok
+export COMPOSE_FILE=${RAGNAROK_DIR}/docker-compose.yml
+
+export PATH="/usr/local/bin:$PATH"
+export PATH="/usr/local/sbin:$PATH"
+export PATH="$PATH:$HOME/bin"

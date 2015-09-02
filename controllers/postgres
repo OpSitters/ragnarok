@@ -1,0 +1,57 @@
+#    Ragnarok - An OSX Development Platform
+#    Copyright (C) 2015  OpSitters.com
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License along
+#    with this program; if not, write to the Free Software Foundation, Inc.,
+#    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+
+function postgres-create-db() {
+  if [ -z $1 ]; then
+    echo "ERROR: Need a username..."
+    exit 1
+  fi
+  log_info "Creating Postgres Database: $1"
+  docker-compose run --rm shell sh -c "exec createdb -h 'postgres' -U postgres -E UTF8 --locale='en_US.UTF-8' --template=template0 \"$1\" || true"
+  return $?
+}
+
+function postgres-create-ro() {
+  if [ -z $1 ]; then
+    echo "ERROR: Need a username..."
+    exit 1
+  fi
+  log_info "Creating Read Only Postgres User: $1"
+  docker-compose run --rm shell sh -c "exec psql -h 'postgres' -U postgres <<EOT
+CREATE ROLE \"$1\" PASSWORD '$1';
+GRANT USAGE ON SCHEMA public TO \"$1\";
+ALTER ROLE \"$1\" WITH LOGIN;
+EOT
+|| true"
+  return $?
+}
+
+function postgres-create-rw() {
+  if [ -z $1 ]; then
+    echo "ERROR: Need a username..."
+    exit 1
+  fi
+  log_info "Creating Read/Write Postgres User: $1"
+  docker-compose run --rm shell sh -c "exec psql -h 'postgres' -U postgres <<EOT
+CREATE ROLE \"$1\" PASSWORD '$1';
+GRANT ALL PRIVILEGES ON SCHEMA public TO \"$1\";
+ALTER ROLE \"$1\" WITH LOGIN;
+EOT
+|| true"
+  return $?
+}

@@ -1,0 +1,88 @@
+# The OSX -> Docker VENV Unison Container
+unison:
+  build: ./unison
+  environment:
+    - SVC_WAIT=15
+    - UNISON_VERSION=2.48.3
+    - UNISONLOCALHOSTNAME=unison
+    - SYNC_TYPE=host
+    - SYNC_MOUNT=/shared
+  volumes:
+    - /mnt/sda1/unison:/unison
+    - /dummy
+  ports:
+    - "50000:5000"
+
+# Database containers and volumes
+rdsdata:
+  image: tianon/sleeping-beauty
+  volumes:
+    - /data
+
+redis:
+  restart: always
+  image: redis:latest
+  volumes_from:
+    - rdsdata
+  ports:
+    - "6379:6379"
+
+pgdata:
+  image: tianon/sleeping-beauty
+  volumes:
+    - /var/lib/postgresql
+
+postgres:
+  build: ./postgres
+  restart: on-failure
+  volumes_from:
+    - pgdata
+  ports:
+    - "5432:5432"
+
+esdata:
+  image: tianon/sleeping-beauty
+  volumes:
+    - /usr/share/elasticsearch/data
+
+elasticsearch:
+  restart: on-failure
+  image: elasticsearch
+  volumes_from:
+    - esdata
+  ports:
+    - "9200:9200"
+
+mgdata:
+  image: tianon/sleeping-beauty
+  volumes:
+    - /data/db
+
+mongo:
+  restart: on-failure
+  image: mongo:3.0.6
+  volumes_from:
+    - mgdata
+  ports:
+    - "27017:27017"
+
+mongos:
+  restart: on-failure
+  image: mongo:3.0.6
+  volumes_from:
+    - mgdata
+  links:
+    - mongoconfig:configdb
+  ports:
+    - "27017:27017"
+
+mongoconfig:
+  restart: on-failure
+  image: mongo:3.0.6
+  ports:
+    - "27017:27017"
+
+
+
+
+
