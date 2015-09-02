@@ -78,10 +78,16 @@ function ragnarok-shell() {
 
 function ragnarok-sync {
   if [ $(screen -ls | grep -ci RAGNAROK_SYNC) -ne 1 ]; then
-    docker-compose up -d unison
+    log_info "Starting Docker/Unison Sync"
+    docker-compose up -d unison || return 1
     sleep 10
-    screen -S RAGNAROK_SYNC -d -m unison -ignore 'Name {.git,*.swp,*.pyc,*.pid}' -ignore 'Path {platform/dashboard/tmp,platform/dashboard/log}' -batch -confirmbigdel=false -ui text -sshargs '-i ~/.ssh/id_boot2docker' ~/ragnarok/shared/ socket://${RAGNAROK_VM_IP}:50000/ -prefer ~/ragnarok/shared/ -numericids -ignorearchives && unison -ignore 'Name {.git,*.swp,*.pyc,*.pid}' -ignore 'Path {platform/dashboard/tmp,platform/dashboard/log}' -batch -confirmbigdel=false -ui text -sshargs '-i ~/.ssh/id_boot2docker' ~/ragnarok/shared/ socket://${RAGNAROK_VM_IP}:50000/ -repeat watch -prefer ~/ragnarok/shared/ -numericids
+    screen -S RAGNAROK_SYNC -d -m /bin/bash -c "unison -ignore 'Name {.git,*.swp,*.pyc,*.pid}' -ignore 'Path {platform/dashboard/tmp,platform/dashboard/log}' -batch -confirmbigdel=false -ui text -sshargs '-i ~/.ssh/id_boot2docker' ~/ragnarok/shared/ socket://${RAGNAROK_VM_IP}:50000/ -prefer ~/ragnarok/shared/ -numericids -ignorearchives && unison -ignore 'Name {.git,*.swp,*.pyc,*.pid}' -ignore 'Path {platform/dashboard/tmp,platform/dashboard/log}' -batch -confirmbigdel=false -ui text -sshargs '-i ~/.ssh/id_boot2docker' ~/ragnarok/shared/ socket://${RAGNAROK_VM_IP}:50000/ -repeat watch -prefer ~/ragnarok/shared/ -numericids"
   fi
+  if [ $(screen -ls | grep -ci RAGNAROK_SYNC) -ne 1 ]; then
+    log_error "Could Not Start Sync, shared volume in containers will be out of date!!!"
+    return 1
+  fi
+  return 0
 }
 
 function ragnarok-build() {
