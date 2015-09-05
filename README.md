@@ -12,7 +12,7 @@ This repo provides a docker based dev environment for the developing on an OSX m
 
 ###Clone this project and get it running!
 ```
-git clone https://github.com/saltmine/ragnarok
+git clone https://github.com/OpSitters/ragnarok.git
 cd ragnarok
 ```
 
