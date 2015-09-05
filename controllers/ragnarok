@@ -109,11 +109,6 @@ function ragnarok-compose() {
   return $?
 }
 
-function ragnarok-init-db-users() {
-  postgres-create-ro pgread
-  postgres-create-rw pgwrite
-}
-
 function ragnarok-init() {
   $RAGNAROK_DIR/ragnarok
   ragnarok-build

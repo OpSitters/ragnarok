@@ -1,6 +1,6 @@
 function demo-fetch-code() {
   if [ ! -d $RAGNAROK_SHARED/demo ]; then
-    git clone git@github.com:OpSitters/ragnarok-demo.git $RAGNAROK_SHARED/demo
+    git clone https://github.com/OpSitters/ragnarok-demo.git $RAGNAROK_SHARED/demo
   fi
 }
 
