@@ -1,0 +1,30 @@
+function demo-fetch-code() {
+  if [ ! -d $RAGNAROK_SHARED/demo ]; then
+    git clone git@github.com:OpSitters/ragnarok-demo.git $RAGNAROK_SHARED/demo
+  fi
+}
+
+function demo-env-update {
+  demo-fetch-code
+  ragnarok-sync || return 1
+  docker-compose run --rm demo_shell /scripts/env_update.sh
+}
+
+
+function demo-api {
+  demo-fetch-code
+  ragnarok-sync || return 1
+  docker-compose up --no-recreate demo_api
+}
+
+function demo-shell() {
+  demo-fetch-code
+  ragnarok-sync || return 1
+  docker-compose run --rm demo_shell /bin/bash
+}
+
+function demo-init() {
+  ragnarok-init
+  ragnarok-sync || return 1
+  demo-env-update
+}

@@ -1,0 +1,41 @@
+demo:
+  build: apps/demo/
+
+demo_envs:
+  image: tianon/sleeping-beauty
+  volumes:
+    - /envs
+
+demo_shell:
+  restart: no
+  image: ragnarok_demo:latest
+  volumes:
+    - /unison:/shared
+  volumes_from:
+    - demo_envs
+    - unison
+  links:
+    - redis:redis
+  environment:
+    - SVC_WAIT=1
+    - SVC_TRY=10
+    - KILL_WAIT=12
+  command: /bin/bash
+
+demo_api:
+  restart: no
+  image: ragnarok_demo:latest
+  volumes:
+    - /unison:/shared
+  volumes_from:
+    - demo_envs
+    - unison
+  links:
+    - redis:redis
+  ports:
+    - "5001:5000"
+  environment:
+    - SVC_WAIT=1
+    - SVC_TRY=10
+    - KILL_WAIT=12
+  command: /bin/bash -c '/scripts/api.sh'

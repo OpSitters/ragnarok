@@ -71,13 +71,13 @@ fi
 
 if ! type unison-fsmonitor > /dev/null 2>&1 ; then
   log_info "Installing unison-fsmonitor"
-  curl -s -o /usr/local/bin/docker-osx-dev https://raw.githubusercontent.com/jumpstarter-io/unox/master/unox.py -o /usr/local/bin/unison-fsmonitor
+  curl -s https://raw.githubusercontent.com/jumpstarter-io/unox/master/unox.py -o /usr/local/bin/unison-fsmonitor
   chmod a+x /usr/local/bin/unison-fsmonitor
 fi
 
-if [ -n "$(pip | grep MacFSEvents)" ]; then
+if [ -z "$(pip freeze 2>&1 | grep MacFSEvents)" ]; then
   log_info "Installing Python MacFSEvents Library"
-  pip install MacFSEvents
+  pip install MacFSEvents 2> /dev/null
 fi
 
 if [ $(VBoxManage list vms | grep -ci "${RAGNAROK_VM}") -ne 1 ]; then

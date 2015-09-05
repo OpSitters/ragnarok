@@ -1,0 +1,8 @@
+Host *
+    IdentityFile ~/.ssh/id_rsa
+    SendEnv LANG LC_*
+    HashKnownHosts yes
+    GSSAPIAuthentication yes
+    GSSAPIDelegateCredentials no
+    StrictHostKeyChecking no
+
