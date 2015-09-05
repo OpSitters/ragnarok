@@ -63,6 +63,7 @@ function ragnarok-delete() {
     VBoxManage dhcpserver remove --netname HostInterfaceNetworking-$VBNET
     VBoxManage hostonlyif remove $VBNET
   fi
+  rm -rf ~/.boot2docker/certs/${RAGNAROK_VM}/ ${BOOT2DOCKER_PROFILE} ~.boot2docker/boot2docker.iso
   log_info "Apocalypse has been reset"
   log_line
 }

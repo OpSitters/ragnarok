@@ -104,7 +104,7 @@ if [ $(VBoxManage list vms | grep -ci "${RAGNAROK_VM}") -ne 1 ]; then
   else
     log_error "ERROR creating the cosmos, errors should have be above..."
     log_line
-    ragnarok-purge
+    ragnarok-delete
     exit 1
   fi
 
@@ -188,7 +188,7 @@ ragnarok-compose
 
 if test -z "$(docker images -q ragnarok/unison)"; then
   log_error "Unison Image not found, Building on ${DOCKER_HOST}..."
-  docker build -t ragnarok/unison git@github.com:popsikle/docker-unison.git
+  docker build -t ragnarok/unison git@github.com:opsitters/docker-unison.git
   if test -z "$(docker images -q ragnarok/unison)"; then
     log_line
     log_error "Unison Image build failed, please summon Hell-Boy"
